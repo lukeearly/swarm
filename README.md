@@ -1,0 +1,1 @@
+# swarm - stateless NixOS machine specification
