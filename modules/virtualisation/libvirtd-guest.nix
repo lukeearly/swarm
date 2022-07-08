@@ -11,10 +11,22 @@ let
       description = "Name of volume";
     };
 
+    pool = mkOption {
+      type = str;
+      example = "state";
+      description = "Name of pool";
+    };
+
     size = mkOption {
       type = str;
       example = "64GiB";
       description = "Storage capacity";
+    };
+
+    command = mkOption {
+      type = inferred;
+      default = name: value: "";
+      description = "Command to generate storage device";
     };
   };
   interfaceOpts = {

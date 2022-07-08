@@ -64,7 +64,13 @@ in
               </domain>
             '';
         in
-          ''
+          builtins.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
+            if ! ${pkgs.libvirt}/bin/virsh vol-key '${value.volume}' --pool ${value.pool} &> /dev/null; then
+              ${pkgs.libvirt}/bin/virsh vol-create-as ${value.pool} '${value.volume}' '${value.size}'
+              ${value.command name (builtins.removeAttrs value [ "command" ])}
+            fi
+          '') guest.storage)
+          + ''
             uuid="$(${pkgs.libvirt}/bin/virsh domuuid '${name}' || true)"
             ${pkgs.libvirt}/bin/virsh define <(sed "s/UUID/$uuid/" '${xml}')
             ${pkgs.libvirt}/bin/virsh start '${name}'
