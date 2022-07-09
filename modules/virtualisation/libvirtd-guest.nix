@@ -4,7 +4,7 @@ with lib;
 with types;
 
 let
-  storageOpts = {
+  storageOpts.options = {
     volume = mkOption {
       type = str;
       example = "store-lb";
@@ -24,12 +24,12 @@ let
     };
 
     command = mkOption {
-      type = inferred;
+      type = anything;
       default = name: value: "";
       description = "Command to generate storage device";
     };
   };
-  interfaceOpts = {
+  interfaceOpts.options = {
     type = mkOption {
       type = str;
     };
@@ -47,13 +47,8 @@ let
       description = "VLAN";
     };
   };
-in
-{
-  config = {
 
-  };
-
-  options.swarm.virtualisation.guestConfig = {
+  guestConfigOpts.options = {
     memory = mkOption {
       type = str;
       example = "4GiB";
@@ -76,6 +71,34 @@ in
       type = listOf str;
       default = [];
       description = "XML description of extra devices for libvirtd";
+    };
+  };
+
+  # guestNode = {
+  #   config.swarm.virtualisation.guestConfig = guestConfigOpts;
+  # };
+in
+{
+  config = {
+
+  };
+
+  options.swarm.virtualisation = {
+    # guestConfig = mkOption {
+    #   type = submodule guestConfigOpts;
+    #   description = "Guest configuration";
+    # };
+    guestConfig = mkOption {
+      type = submodule guestConfigOpts;
+    };
+
+    libvirtd = {
+      enable = mkEnableOption "libvirtd host support";
+      guests = mkOption {
+        # type = attrsOf (submodule guestNode);
+        type = attrsOf (submodule guestConfigOpts);
+        description = "libvirtd guests";
+      };
     };
   };
 }

@@ -1,9 +1,9 @@
-{ config, lib, utils, ... }:
+{ config, lib, utils, pkgs, ... }:
 
 with lib;
 let
-  getNum = value: concatStrings (filter (c: isList (match "[0-9]" c)) (stringToCharacters value));
-  getUnit = value: concatStrings (filter (c: !isList (match "[0-9]" c)) (stringToCharacters value));
+  getNum = value: concatStrings (filter (c: isList (builtins.match "[0-9]" c)) (stringToCharacters value));
+  getUnit = value: concatStrings (filter (c: !isList (builtins.match "[0-9]" c)) (stringToCharacters value));
 in
 {
   config = mkIf config.swarm.virtualisation.libvirtd.enable {
@@ -11,18 +11,18 @@ in
     virtualisation.libvirtd.enable = true;
 
     # https://nixos.wiki/wiki/NixOps/Virtualization
-    systemd.services = lib.mapAttrs' (name: node: lib.nameValuePair "libvirtd-guest-${name}" {
+    systemd.services = mapAttrs' (name: guest: nameValuePair "libvirtd-guest-${name}" {
       after = [ "libvirtd.service" ];
       requires = [ "libvirtd.service" ];
       wantedBy = [ "multi-user.target" ];
-      restartIfChanges = false; # allows custom rollout via systemd
+      restartIfChanged = false; # allows custom rollout via systemd
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = "yes";
       };
       script = 
         let
-          guest = node.config.swarm.virtualisation.guestConfig;
+          # guest = node.config.swarm.virtualisation.guestConfig;
           xml = pkgs.writeText "libvirtd-guest-${name}.xml"
             ''
               <domain type="kvm">
@@ -34,17 +34,17 @@ in
                 <memory unit="${getUnit guest.memory}">${getNum guest.memory}</memory>
                 <devices>
             ''
-            + builtins.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
+            + builtins.concatStringsSep "\n" (mapAttrsToList (sname: value: ''
                   <disk type="volume">
                     <source volume="${value.volume}"/>
-                    <target dev="${name}" bus="virtio"/>
+                    <target dev="${sname}" bus="virtio"/>
                   </disk>
             '') guest.storage)
-            + builtins.optionalString guest.spice ''
+            + optionalString guest.spice ''
                   <graphics type="spice" autoport="yes"/>
                   <input type="keyboard" bus="usb"/>
             ''
-            # + builtins.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
+            # + builtins.concatStringsSep "\n" (lib.mapAttrsToList (iname: value: ''
             #       <interface>
             #         <source dev="${hostNic}" mode="bridge"/>
             # ''
@@ -64,13 +64,14 @@ in
               </domain>
             '';
         in
-          builtins.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
+          (builtins.concatStringsSep "\n" (mapAttrsToList (sname: value: ''
             if ! ${pkgs.libvirt}/bin/virsh vol-key '${value.volume}' --pool ${value.pool} &> /dev/null; then
               ${pkgs.libvirt}/bin/virsh vol-create-as ${value.pool} '${value.volume}' '${value.size}'
               ${value.command name (builtins.removeAttrs value [ "command" ])}
             fi
-          '') guest.storage)
-          + ''
+          '') guest.storage))
+          + 
+          ''
             uuid="$(${pkgs.libvirt}/bin/virsh domuuid '${name}' || true)"
             ${pkgs.libvirt}/bin/virsh define <(sed "s/UUID/$uuid/" '${xml}')
             ${pkgs.libvirt}/bin/virsh start '${name}'
@@ -90,15 +91,5 @@ in
           done
         '';
     }) config.swarm.virtualisation.libvirtd.guests;
-  };
-
-  options = {
-    swarm.virtualisation.libvirtd = {
-      enable = lib.mkEnableOption "libvirtd host support";
-      guests = lib.mkOption {
-        type = types.attrsOf (types.any);
-        description = "libvirtd guests";
-      };
-    };
   };
 }
