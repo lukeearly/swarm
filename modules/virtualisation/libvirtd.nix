@@ -11,9 +11,34 @@ in
     virtualisation.libvirtd.enable = true;
 
     # https://nixos.wiki/wiki/NixOps/Virtualization
-    systemd.services = mapAttrs' (name: guest: nameValuePair "libvirtd-guest-${name}" {
-      after = [ "libvirtd.service" ];
-      requires = [ "libvirtd.service" ];
+    systemd.services = {
+      libvirtd-nets = {
+        after = [ "libvirtd.service" ];
+        requires = [ "libvirtd.service" ];
+        wantedBy = [ "multi-user.target" ];
+        restartIfChanged = false; # allows custom rollout via systemd
+        serviceConfig = {
+          Type = "oneshot";
+        };
+        script = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
+          ${pkgs.libvirt}/bin/virsh net-create '${pkgs.writeText "libvirtd-net-${name}.xml" xml}'
+        '') config.swarm.virtualisation.libvirtd.nets) + "\ntrue";
+      };
+      libvirtd-pools = {
+        after = [ "libvirtd.service" ];
+        requires = [ "libvirtd.service" ];
+        wantedBy = [ "multi-user.target" ];
+        restartIfChanged = false; # allows custom rollout via systemd
+        serviceConfig = {
+          Type = "oneshot";
+        };
+        script = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
+          ${pkgs.libvirt}/bin/virsh pool-create '${pkgs.writeText "libvirtd-pool-${name}.xml" xml}'
+        '') config.swarm.virtualisation.libvirtd.pools) + "\ntrue";
+      };
+    } // (mapAttrs' (name: guest: nameValuePair "libvirtd-guest-${name}" {
+      after = [ "libvirtd.service" "libvirtd-pools.service" "libvirtd-nets.service" ];
+      requires = [ "libvirtd.service" "libvirtd-pools.service" "libvirtd-nets.service" ];
       wantedBy = [ "multi-user.target" ];
       restartIfChanged = false; # allows custom rollout via systemd
       serviceConfig = {
@@ -23,7 +48,7 @@ in
       script = 
         let
           # guest = node.config.swarm.virtualisation.guestConfig;
-          xml = pkgs.writeText "libvirtd-guest-${name}.xml"
+          xml = pkgs.writeText "libvirtd-guest-${name}.xml" (
             ''
               <domain type="kvm">
                 <name>${name}</name>
@@ -36,7 +61,7 @@ in
             ''
             + builtins.concatStringsSep "\n" (mapAttrsToList (sname: value: ''
                   <disk type="volume">
-                    <source volume="${value.volume}"/>
+                    <source pool="${value.pool}" volume="${value.volume}"/>
                     <target dev="${sname}" bus="virtio"/>
                   </disk>
             '') guest.storage)
@@ -62,7 +87,7 @@ in
                   <acpi/>
                 </features>
               </domain>
-            '';
+            '');
         in
           (builtins.concatStringsSep "\n" (mapAttrsToList (sname: value: ''
             if ! ${pkgs.libvirt}/bin/virsh vol-key '${value.volume}' --pool ${value.pool} &> /dev/null; then
@@ -90,6 +115,6 @@ in
             fi
           done
         '';
-    }) config.swarm.virtualisation.libvirtd.guests;
+    }) config.swarm.virtualisation.libvirtd.guests);
   };
 }

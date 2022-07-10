@@ -99,6 +99,16 @@ in
         type = attrsOf (submodule guestConfigOpts);
         description = "libvirtd guests";
       };
+      pools = mkOption {
+        type = attrsOf str;
+        description = "libvirtd storage xml definitions";
+        default = {};
+      };
+      nets = mkOption {
+        type = attrsOf str;
+        description = "libvirtd network xml definitions";
+        default = {};
+      };
     };
   };
 }
