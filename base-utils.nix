@@ -9,8 +9,8 @@ let
     map (index: mkName digits index name) (lists.range first (lastex - 1));
   getSwarm' = nodes: digits: first: lastex: name:
     attrsets.genAttrs (getSwarmNames digits first lastex name) (n: getAttr n nodes);
-  getSwarm = if nodes == null then getSwarm' else getSwarm' nodes;
+  getSwarm = if nodes == null then null else getSwarm' nodes;
 
 in {
-  inherit mkName getSwarmNames getSwarm;
+  inherit mkName getSwarmNames getSwarm getSwarm';
 }

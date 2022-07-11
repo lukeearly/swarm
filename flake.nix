@@ -9,7 +9,7 @@
       inherit flake-utils;
       my-nixpkgs = nixpkgs;
     }) // rec {
-      templates = ./templates/default.nix;
+      templates = import ./templates/default.nix;
       defaultTemplate = templates.empty;
     };
 }

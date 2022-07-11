@@ -2,7 +2,7 @@
     inputs = {
         nixpkgs-latest.url = "github:NixOS/nixpkgs/nixos-21.11";
         nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-        swarm.url = "git+ssh://git@github.com/lukeearly/swarm.git";
+        swarm.url = "github:lukeearly/swarm";
         swarm.inputs.nixpkgs.follows = "nixpkgs-latest";
     };
 

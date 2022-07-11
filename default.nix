@@ -19,9 +19,9 @@ let
       mkOneMachine nixpkgs modules index (mkName digits index name)
     )  (lists.range first (lastex - 1));
   swarmModules = map import [
-      ./modules/networking/reasonable.nix
+      ./modules/networking/hostname.nix
       ./modules/virtualisation/libvirtd.nix
-      ./modules/virtualisation/libvirtd-guest.nix
+      ./modules/virtualisation/libvirtd-opts.nix
     ];
   nixosModules = nixpkgs: import (nixpkgs + "/nixos/modules/module-list.nix");
 
