@@ -19,9 +19,13 @@ in
         restartIfChanged = false; # allows custom rollout via systemd
         serviceConfig = {
           Type = "oneshot";
+          RemainAfterExit = "yes";
         };
         script = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
           ${pkgs.libvirt}/bin/virsh net-create '${pkgs.writeText "libvirtd-net-${name}.xml" xml}'
+        '') config.swarm.virtualisation.libvirtd.nets) + "\ntrue";
+        preStop = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
+          ${pkgs.libvirt}/bin/virsh net-destroy ${name}
         '') config.swarm.virtualisation.libvirtd.nets) + "\ntrue";
       };
       libvirtd-pools = {
@@ -31,9 +35,13 @@ in
         restartIfChanged = false; # allows custom rollout via systemd
         serviceConfig = {
           Type = "oneshot";
+          RemainAfterExit = "yes";
         };
         script = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
           ${pkgs.libvirt}/bin/virsh pool-create '${pkgs.writeText "libvirtd-pool-${name}.xml" xml}'
+        '') config.swarm.virtualisation.libvirtd.pools) + "\ntrue";
+        preStop = builtins.concatStringsSep "\n" (mapAttrsToList (name: xml: ''
+          ${pkgs.libvirt}/bin/virsh pool-destroy ${name}
         '') config.swarm.virtualisation.libvirtd.pools) + "\ntrue";
       };
     } // (mapAttrs' (name: guest: nameValuePair "libvirtd-guest-${name}" {
