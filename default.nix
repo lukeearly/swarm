@@ -25,14 +25,14 @@ let
     ];
   nixosModules = nixpkgs: import (nixpkgs + "/nixos/modules/module-list.nix");
 
-  evalMachine = { nodes, commonModules, check }: { nixpkgs, modules }:
+  evalMachine = { nodes, commonModules, check, meta }: { nixpkgs, modules }:
     let baseModules = nixosModules nixpkgs;
     in nixpkgs.lib.evalModules {
       modules = (singleton {
         nixpkgs.system = mkDefault "x86_64-linux"; 
         _module = {
           args = {
-            inherit nodes baseModules;
+            inherit nodes baseModules meta;
             utils = import ./base-utils.nix { 
               inherit nodes;
               inherit (nixpkgs) lib;
@@ -45,7 +45,7 @@ let
         modulesPath = nixpkgs + "/nixos/modules";
       };
     };
-  mkSpec = spec@{ meta ? { name = "spec"; description = "my first specification"; }, common ? [], ... }: 
+  mkSpec = spec@{ meta ? { name = "spec"; description = "a swarm specification"; }, common ? [], ... }: 
     let 
       userMachines = removeAttrs spec [ "meta" "common" ];
       moduleSet = listToAttrs (concatLists (attrsets.mapAttrsToList (name: value: value name) userMachines));
@@ -54,12 +54,14 @@ let
           commonModules = common;
           nodes = uncheckedNodes;
           check = false;
+          inherit meta;
         } value) moduleSet;
 
         nodes = attrsets.mapAttrs (name: value: evalMachine {
           commonModules = common;
           nodes = uncheckedNodes;
           check = true;
+          inherit meta;
         } value) moduleSet;
       }.nodes;
 
